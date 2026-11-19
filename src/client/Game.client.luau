@@ -295,9 +295,11 @@ rebirthButton.MouseButton1Click:Connect(function()
 end)
 
 -- Slap button, bottom right, for touch players and mouse players alike.
+-- 84x84: big enough to hit on a phone, small enough not to swallow the
+-- corner (the old 96x96 covered a quarter of a landscape phone screen).
 -- Anchored to the bottom edge and shifted left of the mobile jump
 -- button, clear of the shop panel above it.
-local slapButton = makeButton(gui, "Slap", UDim2.new(0, 96, 0, 96), UDim2.new(1, -260, 1, -16), "SLAP!\n(F)", Color3.fromRGB(220, 80, 40))
+local slapButton = makeButton(gui, "Slap", UDim2.new(0, 84, 0, 84), UDim2.new(1, -260, 1, -16), "SLAP!\n(F)", Color3.fromRGB(220, 80, 40))
 slapButton.AnchorPoint = Vector2.new(1, 1)
 
 -- ---------------------------------------------------------------------------
