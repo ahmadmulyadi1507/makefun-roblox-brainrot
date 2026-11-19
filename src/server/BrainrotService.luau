@@ -209,13 +209,17 @@ end
 -- The conveyor
 -- ---------------------------------------------------------------------------
 
-local function spawnBeltBrainrot()
+local function spawnBeltBrainrot(startX)
 	if #belt >= Config.CONVEYOR.MaxOnBelt then
 		return
 	end
 	local character = BrainrotData.rollCharacter()
 	local mutation = BrainrotData.rollMutation()
-	local position = Vector3.new(Config.CONVEYOR.StartX, 1, Config.CONVEYOR.Z)
+	-- startX is the belt x to spawn at. The spawn loop passes nothing
+	-- (default: the belt start). The initial three spawns pass staggered
+	-- positions so their name tags never sit on top of each other.
+	local x = startX or Config.CONVEYOR.StartX
+	local position = Vector3.new(x, 1, Config.CONVEYOR.Z)
 	local model = CharacterFactory.buildBrainrot(character, mutation, position)
 	model.Parent = world.folder
 	local entry = {
@@ -225,9 +229,16 @@ local function spawnBeltBrainrot()
 		mutation = mutation,
 		income = character.income * mutation.multiplier,
 		cost = character.cost,
-		x = Config.CONVEYOR.StartX,
+		x = x,
 	}
 	nextBeltId = nextBeltId + 1
+	-- Alternate tag heights between neighbours (10 and 13 studs above the
+	-- torso) so two tags that end up close never share one line. The
+	-- height rides with the model, so it survives buying and stealing.
+	local tag = model:FindFirstChild("BrainrotTag")
+	if tag then
+		tag.StudsOffset = Vector3.new(0, entry.id % 2 == 0 and 13 or 10, 0)
+	end
 	model:SetAttribute("BeltId", entry.id)
 	table.insert(belt, entry)
 	broadcastBelt()
@@ -974,10 +985,14 @@ function BrainrotService.start()
 		setupPlayer(player)
 	end
 
-	-- The belt starts with three brainrots already on it. Each spawn is
-	-- its own pcall: one bad brainrot must not stop the other two.
-	for _ = 1, 3 do
-		local ok, err = pcall(spawnBeltBrainrot)
+	-- The belt starts with three brainrots already on it, spaced one
+	-- spawn-interval apart (24 studs) instead of stacked at the same
+	-- point: three models at one x move as a pack and their name tags
+	-- pile on top of each other. Each spawn is its own pcall: one bad
+	-- brainrot must not stop the other two.
+	local initialSpacing = Config.CONVEYOR.SpawnInterval * Config.CONVEYOR.Speed
+	for i = 1, 3 do
+		local ok, err = pcall(spawnBeltBrainrot, Config.CONVEYOR.StartX + (i - 1) * initialSpacing)
 		if not ok then
 			warn("[BrainrotService] initial belt spawn failed: " .. tostring(err))
 		end
