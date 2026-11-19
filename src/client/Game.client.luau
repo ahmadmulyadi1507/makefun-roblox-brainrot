@@ -17,17 +17,23 @@ local BrainrotData = require(Shared:WaitForChild("BrainrotData"))
 local Config = require(Shared:WaitForChild("Config"))
 
 local player = Players.LocalPlayer
-local remotes = ReplicatedStorage:WaitForChild("BrainrotRemotes")
-local buyEvent = remotes:WaitForChild("BuyBrainrot")
-local stealEvent = remotes:WaitForChild("StealBrainrot")
-local slapEvent = remotes:WaitForChild("Slap")
-local lockEvent = remotes:WaitForChild("LockBase")
-local upgradeEvent = remotes:WaitForChild("BuyUpgrade")
-local rebirthEvent = remotes:WaitForChild("Rebirth")
-local hudEvent = remotes:WaitForChild("HudUpdate")
-local beltEvent = remotes:WaitForChild("BeltUpdate")
-local notifyEvent = remotes:WaitForChild("Notify")
-local waveEvent = remotes:WaitForChild("WaveUpdate")
+
+-- Remote handles are filled in AFTER the GUI is built (see "Server
+-- connection" below), so the screen never stays blank while the client
+-- waits for the server. Every use below nil-checks them: if the server
+-- never created the remotes, the buttons still show and just report
+-- the status instead of crashing.
+local remotes = nil
+local buyEvent = nil
+local stealEvent = nil
+local slapEvent = nil
+local lockEvent = nil
+local upgradeEvent = nil
+local rebirthEvent = nil
+local hudEvent = nil
+local beltEvent = nil
+local notifyEvent = nil
+local waveEvent = nil
 
 -- ---------------------------------------------------------------------------
 -- Frames
@@ -86,6 +92,20 @@ local cashLabel = makeLabel(topBar, "Cash", UDim2.new(0.30, 0, 1, 0), UDim2.new(
 local incomeLabel = makeLabel(topBar, "Income", UDim2.new(0.26, 0, 1, 0), UDim2.new(0.32, 0, 0, 0), "+$0/s", Color3.fromRGB(255, 220, 90))
 local rebirthLabel = makeLabel(topBar, "Rebirths", UDim2.new(0.19, 0, 1, 0), UDim2.new(0.59, 0, 0, 0), "Rebirth x0", Color3.fromRGB(180, 140, 255))
 local waveLabel = makeLabel(topBar, "Wave", UDim2.new(0.20, 0, 1, 0), UDim2.new(0.79, 0, 0, 0), "Wave: --", Color3.fromRGB(120, 180, 255))
+
+-- Status line under the top bar: "Memuat..." until the server answers,
+-- "Terhubung" once the remotes exist, or a plain-language error if the
+-- server never got ready. It is built with the rest of the GUI, before
+-- any remote is waited on, so a dead server still shows a diagnosis
+-- instead of a blank field.
+local statusLabel = makeLabel(gui, "Status", UDim2.new(0.46, 0, 0, 16), UDim2.new(0.5, 0, 0, 54), "Memuat...", Color3.fromRGB(255, 220, 90))
+statusLabel.AnchorPoint = Vector2.new(0.5, 0)
+statusLabel.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+statusLabel.BackgroundTransparency = 0.3
+local statusSize = Instance.new("UISizeConstraint")
+statusSize.MinSize = Vector2.new(300, 16)
+statusSize.MaxSize = Vector2.new(560, 16)
+statusSize.Parent = statusLabel
 
 -- Toast messages under the top bar.
 local toast = makeLabel(gui, "Toast", UDim2.new(0.4, 0, 0, 36), UDim2.new(0.3, 0, 0, 58), "", Color3.fromRGB(255, 255, 255))
@@ -230,7 +250,11 @@ local function rebuildShop(entries)
 		local buyButton = makeButton(row, "Buy", UDim2.new(0.32, 0, 0, 44), UDim2.new(0.66, 0, 0, 6),
 			"BUY " .. BrainrotData.formatMoney(entry.cost), Color3.fromRGB(60, 140, 70))
 		buyButton.MouseButton1Click:Connect(function()
-			buyEvent:FireServer(entry.id)
+			if buyEvent then
+				buyEvent:FireServer(entry.id)
+			else
+				showToast("Server belum siap — coba masuk lagi", "bad")
+			end
 		end)
 	end
 end
@@ -276,7 +300,11 @@ baseLayout.Parent = baseList
 local slotsLabel = makeLabel(baseList, "Slots", UDim2.new(1, 0, 0, 22), UDim2.new(0, 0, 0, 0), "Slots: 0/6", Color3.fromRGB(200, 200, 200), Enum.Font.Gotham)
 local lockButton = makeButton(baseList, "Lock", UDim2.new(1, 0, 0, 40), UDim2.new(0, 0, 0, 0), "LOCK BASE (30s)", Color3.fromRGB(200, 60, 60))
 lockButton.MouseButton1Click:Connect(function()
-	lockEvent:FireServer()
+	if lockEvent then
+		lockEvent:FireServer()
+	else
+		showToast("Server belum siap — coba masuk lagi", "bad")
+	end
 end)
 local upgradeButtons = {}
 local upgradeOrder = { "speed", "slap", "slots", "income" }
@@ -285,13 +313,21 @@ for _, upgradeId in ipairs(upgradeOrder) do
 	local button = makeButton(baseList, "Upgrade" .. upgradeId, UDim2.new(1, 0, 0, 38),
 		UDim2.new(0, 0, 0, 0), def.name .. " — " .. BrainrotData.formatMoney(def.baseCost), Color3.fromRGB(70, 90, 180))
 	button.MouseButton1Click:Connect(function()
-		upgradeEvent:FireServer(upgradeId)
+		if upgradeEvent then
+			upgradeEvent:FireServer(upgradeId)
+		else
+			showToast("Server belum siap — coba masuk lagi", "bad")
+		end
 	end)
 	upgradeButtons[upgradeId] = button
 end
 local rebirthButton = makeButton(baseList, "Rebirth", UDim2.new(1, 0, 0, 40), UDim2.new(0, 0, 0, 0), "REBIRTH", Color3.fromRGB(140, 60, 180))
 rebirthButton.MouseButton1Click:Connect(function()
-	rebirthEvent:FireServer()
+	if rebirthEvent then
+		rebirthEvent:FireServer()
+	else
+		showToast("Server belum siap — coba masuk lagi", "bad")
+	end
 end)
 
 -- Slap button, bottom right, for touch players and mouse players alike.
@@ -301,6 +337,37 @@ end)
 -- button, clear of the shop panel above it.
 local slapButton = makeButton(gui, "Slap", UDim2.new(0, 84, 0, 84), UDim2.new(1, -260, 1, -16), "SLAP!\n(F)", Color3.fromRGB(220, 80, 40))
 slapButton.AnchorPoint = Vector2.new(1, 1)
+
+-- ---------------------------------------------------------------------------
+-- Server connection
+-- ---------------------------------------------------------------------------
+-- The GUI above is already on screen by now. Only here do we wait for
+-- the server: up to 10 seconds for the remotes folder. If the server
+-- script crashed before creating it, this times out instead of hanging
+-- forever, the status line says so in plain language, and every button
+-- below stays usable (it just reports the status).
+local remotesFolder = ReplicatedStorage:WaitForChild("BrainrotRemotes", 10)
+if remotesFolder then
+	remotes = remotesFolder
+	local function getRemote(name)
+		return remotes:FindFirstChild(name)
+	end
+	buyEvent = getRemote("BuyBrainrot")
+	stealEvent = getRemote("StealBrainrot")
+	slapEvent = getRemote("Slap")
+	lockEvent = getRemote("LockBase")
+	upgradeEvent = getRemote("BuyUpgrade")
+	rebirthEvent = getRemote("Rebirth")
+	hudEvent = getRemote("HudUpdate")
+	beltEvent = getRemote("BeltUpdate")
+	notifyEvent = getRemote("Notify")
+	waveEvent = getRemote("WaveUpdate")
+	statusLabel.Text = "Terhubung"
+	statusLabel.TextColor3 = Color3.fromRGB(120, 255, 120)
+else
+	statusLabel.Text = "Server belum siap — coba masuk lagi"
+	statusLabel.TextColor3 = Color3.fromRGB(255, 110, 110)
+end
 
 -- ---------------------------------------------------------------------------
 -- Actions
@@ -334,6 +401,10 @@ local function findSlapTarget()
 end
 
 local function doSlap()
+	if not slapEvent then
+		showToast("Server belum siap — coba masuk lagi", "bad")
+		return
+	end
 	local target = findSlapTarget()
 	if target then
 		slapEvent:FireServer(target)
@@ -358,13 +429,17 @@ local function hookClickDetector(detector)
 		end
 		local beltId = model:GetAttribute("BeltId")
 		if beltId then
-			buyEvent:FireServer(beltId)
+			if buyEvent then
+				buyEvent:FireServer(beltId)
+			end
 			return
 		end
 		local ownerId = model:GetAttribute("OwnerUserId")
 		local slot = model:GetAttribute("SlotIndex")
 		if ownerId and ownerId ~= player.UserId and slot then
-			stealEvent:FireServer(ownerId, slot)
+			if stealEvent then
+				stealEvent:FireServer(ownerId, slot)
+			end
 		end
 	end)
 end
@@ -384,7 +459,8 @@ end)
 -- Server updates
 -- ---------------------------------------------------------------------------
 
-hudEvent.OnClientEvent:Connect(function(state)
+if hudEvent then
+	hudEvent.OnClientEvent:Connect(function(state)
 	cashLabel.Text = BrainrotData.formatMoney(state.cash)
 	incomeLabel.Text = "+" .. BrainrotData.formatMoney(state.income) .. "/s"
 	rebirthLabel.Text = "Rebirth x" .. tostring(state.rebirths)
@@ -425,16 +501,22 @@ hudEvent.OnClientEvent:Connect(function(state)
 			.. BrainrotData.formatMoney(Config.REBIRTH.RequiredLifetimeEarned) .. " earned"
 	end
 end)
+end
 
-beltEvent.OnClientEvent:Connect(function(entries)
-	rebuildShop(entries)
-end)
+if beltEvent then
+	beltEvent.OnClientEvent:Connect(function(entries)
+		rebuildShop(entries)
+	end)
+end
 
-notifyEvent.OnClientEvent:Connect(function(message, kind)
-	showToast(message, kind)
-end)
+if notifyEvent then
+	notifyEvent.OnClientEvent:Connect(function(message, kind)
+		showToast(message, kind)
+	end)
+end
 
-waveEvent.OnClientEvent:Connect(function(phase, secondsLeft)
+if waveEvent then
+	waveEvent.OnClientEvent:Connect(function(phase, secondsLeft)
 	if phase == "warning" then
 		waveBanner.Visible = true
 		waveBanner.Text = "NOODLE TSUNAMI IN " .. tostring(secondsLeft) .. "s — GET TO YOUR BASE!"
@@ -445,3 +527,4 @@ waveEvent.OnClientEvent:Connect(function(phase, secondsLeft)
 		waveBanner.Visible = false
 	end
 end)
+end
