@@ -42,9 +42,9 @@ local function makeBaseBoard(parent, baseDef)
 		baseDef.position + Vector3.new(0, 9, -Config.BASE_SIZE.Z / 2 - 1), baseDef.color)
 	local gui = Instance.new("BillboardGui")
 	gui.Name = "BaseBoard"
-	gui.Size = UDim2.new(0, 320, 0, 130)
+	gui.Size = UDim2.new(0, 260, 0, 100)
 	gui.StudsOffset = Vector3.new(0, 0, 0)
-	gui.AlwaysOnTop = true
+	gui.AlwaysOnTop = false
 	gui.Adornee = board
 	gui.Parent = board
 	local title = Instance.new("TextLabel")
@@ -98,7 +98,7 @@ local function buildBase(parent, baseDef, index)
 				baseDef.position + Vector3.new(dx, 0.65, dz), Color3.fromRGB(240, 240, 240))
 			pad.Material = Enum.Material.Neon
 			pad.Transparency = 0.6
-			slots[slotIndex] = pad.Position + Vector3.new(0, 1.6, 0)
+			slots[slotIndex] = pad.Position + Vector3.new(0, 2.1, 0)
 			slotIndex = slotIndex + 1
 		end
 	end

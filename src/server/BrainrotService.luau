@@ -19,6 +19,14 @@ local CharacterFactory = require(script.Parent:WaitForChild("CharacterFactory"))
 
 local BrainrotService = {}
 
+-- A belt brainrot's pivot is its body centre, 1.5 studs above its feet,
+-- and the model is built 1.3x scale, so the feet sit 1.95 studs below
+-- the pivot. The belt top is Y=1, so the pivot must ride at Y=3.2 for
+-- the feet to stay on the belt even at the bottom of the walk bob.
+-- (Before this fix the pivot rode at Y=1, burying the body waist-deep
+-- in the belt so only the head showed.)
+local BELT_PIVOT_Y = 3.2
+
 -- Live state.
 local world = nil
 local remotes = nil
@@ -237,7 +245,7 @@ local function moveBelt(dt, now)
 			broadcastBelt()
 		else
 			local bob = math.sin(now * 3 + entry.id) * 0.25
-			entry.model:PivotTo(CFrame.new(entry.x, 1 + bob, Config.CONVEYOR.Z))
+			entry.model:PivotTo(CFrame.new(entry.x, BELT_PIVOT_Y + bob, Config.CONVEYOR.Z))
 			i = i + 1
 		end
 	end
@@ -349,7 +357,7 @@ local function returnCarried(ref, ownerUserId)
 	-- No room at home: it goes back on the belt as a fresh listing.
 	ref.model:SetAttribute("OwnerUserId", nil)
 	ref.model:SetAttribute("SlotIndex", nil)
-	ref.model:PivotTo(CFrame.new(Config.CONVEYOR.StartX, 1, Config.CONVEYOR.Z))
+	ref.model:PivotTo(CFrame.new(Config.CONVEYOR.StartX, BELT_PIVOT_Y, Config.CONVEYOR.Z))
 	local entry = {
 		id = nextBeltId,
 		model = ref.model,
@@ -941,7 +949,7 @@ function BrainrotService.start()
 				local character = player.Character
 				local root = character and character:FindFirstChild("HumanoidRootPart")
 				if root and data.carrying.model and data.carrying.model.Parent then
-					data.carrying.model:PivotTo(root.CFrame * CFrame.new(0, 4.5, 0))
+					data.carrying.model:PivotTo(root.CFrame * CFrame.new(0, 5.0, 0))
 				end
 				tryDeliverSteal(player)
 			end

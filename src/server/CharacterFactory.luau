@@ -6,6 +6,10 @@
 
 local BrainrotData = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("BrainrotData"))
 
+-- Belt brainrots are built 1.3x scale so they read clearly on a phone:
+-- a bigger body, a bigger name tag and a glowing ring at the feet.
+local MODEL_SCALE = 1.3
+
 local CharacterFactory = {}
 
 local function makePart(parent, name, size, position, color, transparency)
@@ -73,8 +77,8 @@ end
 local function addNameTag(model, character, mutation, incomePerSecond)
 	local tag = Instance.new("BillboardGui")
 	tag.Name = "BrainrotTag"
-	tag.Size = UDim2.new(0, 220, 0, 90)
-	tag.StudsOffset = Vector3.new(0, 5.2, 0)
+	tag.Size = UDim2.new(0, 260, 0, 100)
+	tag.StudsOffset = Vector3.new(0, 7, 0)
 	tag.AlwaysOnTop = true
 	tag.Parent = model
 	local rarityInfo = BrainrotData.RARITIES[character.rarity]
@@ -86,7 +90,7 @@ local function addNameTag(model, character, mutation, incomePerSecond)
 	nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 	nameLabel.TextScaled = true
 	nameLabel.Font = Enum.Font.GothamBold
-	nameLabel.TextStrokeTransparency = 0.2
+	nameLabel.TextStrokeTransparency = 0
 	nameLabel.Parent = tag
 	local rarityLabel = Instance.new("TextLabel")
 	rarityLabel.Name = "Rarity"
@@ -101,7 +105,7 @@ local function addNameTag(model, character, mutation, incomePerSecond)
 	rarityLabel.TextColor3 = rarityInfo and rarityInfo.color or Color3.fromRGB(255, 255, 255)
 	rarityLabel.TextScaled = true
 	rarityLabel.Font = Enum.Font.GothamBold
-	rarityLabel.TextStrokeTransparency = 0.2
+	rarityLabel.TextStrokeTransparency = 0
 	rarityLabel.Parent = tag
 	local incomeLabel = Instance.new("TextLabel")
 	incomeLabel.Name = "Income"
@@ -112,7 +116,7 @@ local function addNameTag(model, character, mutation, incomePerSecond)
 	incomeLabel.TextColor3 = Color3.fromRGB(120, 255, 120)
 	incomeLabel.TextScaled = true
 	incomeLabel.Font = Enum.Font.GothamBold
-	incomeLabel.TextStrokeTransparency = 0.2
+	incomeLabel.TextStrokeTransparency = 0
 	incomeLabel.Parent = tag
 	return tag
 end
@@ -143,6 +147,25 @@ function CharacterFactory.buildBrainrot(character, mutation, position)
 	addNameTag(model, character, mutation, incomePerSecond)
 
 	model.PrimaryPart = body
+	-- Scale the whole model up around its pivot (the body) so it reads
+	-- clearly on a phone. All sizes and offsets above are pre-scale.
+	model:ScaleTo(MODEL_SCALE)
+
+	-- A glowing ring in the brainrot's rarity colour, flat on the ground
+	-- under its feet, so it pops against the dark belt. The ring sits
+	-- 1.85 studs below the pivot: the scaled feet end 1.95 below it.
+	local rarityInfo = BrainrotData.RARITIES[character.rarity]
+	local ring = Instance.new("Part")
+	ring.Name = "BaseRing"
+	ring.Size = Vector3.new(0.3, 6, 6)
+	ring.CFrame = CFrame.new(position + Vector3.new(0, -0.35, 0)) * CFrame.Angles(0, 0, math.rad(90))
+	ring.Color = rarityInfo and rarityInfo.color or Color3.fromRGB(255, 255, 255)
+	ring.Material = Enum.Material.Neon
+	ring.Transparency = 0.25
+	ring.Anchored = true
+	ring.CanCollide = false
+	ring.Parent = model
+
 	model:SetAttribute("CharacterId", character.id)
 	model:SetAttribute("Mutation", mutation.name)
 	model:SetAttribute("Income", incomePerSecond)
