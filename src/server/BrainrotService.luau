@@ -20,12 +20,12 @@ local CharacterFactory = require(script.Parent:WaitForChild("CharacterFactory"))
 local BrainrotService = {}
 
 -- A belt brainrot's pivot is its body centre, 1.5 studs above its feet,
--- and the model is built 1.3x scale, so the feet sit 1.95 studs below
--- the pivot. The belt top is Y=1, so the pivot must ride at Y=3.2 for
--- the feet to stay on the belt even at the bottom of the walk bob.
--- (Before this fix the pivot rode at Y=1, burying the body waist-deep
--- in the belt so only the head showed.)
-local BELT_PIVOT_Y = 3.2
+-- and the model is built 2.0x scale, so the feet sit 3.0 studs below
+-- the pivot. The belt top is Y=1, so the pivot rides at Y=4.0 and the
+-- feet stand on the belt. The walk bob (±0.25) dips the feet a
+-- quarter-stud into the belt at the bottom of each step, which reads
+-- as a footstep, not a sink.
+local BELT_PIVOT_Y = 4.0
 
 -- Live state.
 local world = nil
@@ -897,6 +897,28 @@ end
 -- ---------------------------------------------------------------------------
 
 function BrainrotService.start()
+	-- Light the world for a phone camera: Future lighting with real
+	-- shadows, a bright midday sun and a thin atmosphere, so saturated
+	-- colours stay saturated instead of washing out. Set at runtime as
+	-- well as in the project file, so the place lights the same way no
+	-- matter which build it came from. Display only — no gameplay.
+	local Lighting = game:GetService("Lighting")
+	Lighting.Technology = Enum.Technology.Future
+	Lighting.ClockTime = 14
+	Lighting.Brightness = 2
+	Lighting.GlobalShadows = true
+	Lighting.Ambient = Color3.fromRGB(70, 70, 70)
+	if not Lighting:FindFirstChildOfClass("Atmosphere") then
+		local atmosphere = Instance.new("Atmosphere")
+		atmosphere.Density = 0.15
+		atmosphere.Offset = 0
+		atmosphere.Color = Color3.fromRGB(200, 220, 255)
+		atmosphere.Decay = Color3.fromRGB(180, 200, 230)
+		atmosphere.Glare = 0.3
+		atmosphere.Haze = 0
+		atmosphere.Parent = Lighting
+	end
+
 	world = WorldBuilder.buildWorld()
 	remotes = createRemotes()
 

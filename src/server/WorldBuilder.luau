@@ -71,55 +71,77 @@ local function makeBaseBoard(parent, baseDef)
 	return owner
 end
 
--- One player base: platform, six slot pads, a lock gate and a border.
+-- One player base: platform, six slot pads, a lock gate, a glowing
+-- border and a beacon pillar so the base reads from across the map.
 local function buildBase(parent, baseDef, index)
 	local folder = Instance.new("Folder")
 	folder.Name = baseDef.name:gsub(" ", "")
 	folder.Parent = parent
 
-	local platform = makePart(folder, "Platform", "Part", Config.BASE_SIZE, baseDef.position, baseDef.color)
+	-- Platform 2 studs thick with its top at Y=1: a 1-stud step up from
+	-- the grass, so players walk straight on, but from the low spawn
+	-- camera it reads as a solid coloured slab instead of the old
+	-- half-buried 0.5-stud lip that looked like a thin line.
+	local platform = makePart(folder, "Platform", "Part",
+		Vector3.new(Config.BASE_SIZE.X, 2, Config.BASE_SIZE.Z),
+		baseDef.position + Vector3.new(0, 0, 0), baseDef.color)
 	platform.Material = Enum.Material.SmoothPlastic
 
-	-- Thin coloured border so a base reads as a safe zone at a glance.
-	local borderY = 1.1
-	makePart(folder, "BorderNorth", "Part", Vector3.new(Config.BASE_SIZE.X, 0.2, 0.4),
-		baseDef.position + Vector3.new(0, borderY, -Config.BASE_SIZE.Z / 2), Color3.fromRGB(255, 255, 255))
-	makePart(folder, "BorderSouth", "Part", Vector3.new(Config.BASE_SIZE.X, 0.2, 0.4),
-		baseDef.position + Vector3.new(0, borderY, Config.BASE_SIZE.Z / 2), Color3.fromRGB(255, 255, 255))
-	makePart(folder, "BorderWest", "Part", Vector3.new(0.4, 0.2, Config.BASE_SIZE.Z),
-		baseDef.position + Vector3.new(-Config.BASE_SIZE.X / 2, borderY, 0), Color3.fromRGB(255, 255, 255))
-	makePart(folder, "BorderEast", "Part", Vector3.new(0.4, 0.2, Config.BASE_SIZE.Z),
-		baseDef.position + Vector3.new(Config.BASE_SIZE.X / 2, borderY, 0), Color3.fromRGB(255, 255, 255))
+	-- Thick glowing border so a base reads as a safe zone at a glance,
+	-- even from across the map.
+	for _, border in ipairs({
+		{ "BorderNorth", Vector3.new(Config.BASE_SIZE.X, 0.4, 0.4), Vector3.new(0, 1.2, -Config.BASE_SIZE.Z / 2) },
+		{ "BorderSouth", Vector3.new(Config.BASE_SIZE.X, 0.4, 0.4), Vector3.new(0, 1.2, Config.BASE_SIZE.Z / 2) },
+		{ "BorderWest", Vector3.new(0.4, 0.4, Config.BASE_SIZE.Z), Vector3.new(-Config.BASE_SIZE.X / 2, 1.2, 0) },
+		{ "BorderEast", Vector3.new(0.4, 0.4, Config.BASE_SIZE.Z), Vector3.new(Config.BASE_SIZE.X / 2, 1.2, 0) },
+	}) do
+		local part = makePart(folder, border[1], "Part", border[2], baseDef.position + border[3], Color3.fromRGB(255, 255, 255))
+		part.Material = Enum.Material.Neon
+	end
 
 	-- Six slot pads in a 3 by 2 grid.
 	local slots = {}
 	local slotIndex = 1
 	for _, dz in ipairs({ -3.5, 3.5 }) do
 		for _, dx in ipairs({ -7, 0, 7 }) do
-			local pad = makePart(folder, "Slot" .. slotIndex, "Part", Vector3.new(4, 0.3, 4),
-				baseDef.position + Vector3.new(dx, 0.65, dz), Color3.fromRGB(240, 240, 240))
+			local pad = makePart(folder, "Slot" .. slotIndex, "Part", Vector3.new(6, 0.3, 6),
+				baseDef.position + Vector3.new(dx, 1.15, dz), Color3.fromRGB(240, 240, 240))
 			pad.Material = Enum.Material.Neon
 			pad.Transparency = 0.6
-			slots[slotIndex] = pad.Position + Vector3.new(0, 2.1, 0)
+			-- Slot pivot: pad top (1.3) + 3.0, because a 2.0x brainrot's
+			-- feet end exactly 3.0 below its pivot.
+			slots[slotIndex] = pad.Position + Vector3.new(0, 3.15, 0)
 			slotIndex = slotIndex + 1
 		end
 	end
 
 	-- The lock gate stands across the side that faces the conveyor. It is
 	-- invisible while unlocked and glows red while the base is locked.
+	-- It spans the platform top (Y=1) up to Y=7.
 	local facing = 1
 	if baseDef.position.Z > 0 then
 		facing = -1
 	end
 	local gate = makePart(folder, "Gate", "Part",
 		Vector3.new(Config.BASE_SIZE.X, 6, 0.5),
-		baseDef.position + Vector3.new(0, 3.5, facing * (Config.BASE_SIZE.Z / 2)),
+		baseDef.position + Vector3.new(0, 4, facing * (Config.BASE_SIZE.Z / 2)),
 		Color3.fromRGB(255, 40, 40))
 	gate.Material = Enum.Material.ForceField
 	gate.Transparency = 1
 	gate.CanCollide = false
 
 	local ownerLabel = makeBaseBoard(folder, baseDef)
+
+	-- A tall glowing beacon just behind the base (on the grass, clear of
+	-- the slot pads and the gate) so the base reads from across the map,
+	-- even from the low spawn camera.
+	local beaconX = baseDef.position.X + (baseDef.position.X > 0 and 9 or -9)
+	local beaconZ = baseDef.position.Z + (baseDef.position.Z > 0 and 8.5 or -8.5)
+	local beacon = makePart(folder, "Beacon", "Part", Vector3.new(1.2, 12, 1.2),
+		Vector3.new(beaconX, 6, beaconZ), baseDef.color)
+	beacon.Material = Enum.Material.Neon
+	local beaconLight = makeBall(folder, "BeaconLight", 1.5, Vector3.new(beaconX, 12.8, beaconZ), baseDef.color)
+	beaconLight.Material = Enum.Material.Neon
 
 	return {
 		index = index,
@@ -139,15 +161,24 @@ local function buildConveyor(parent)
 		Vector3.new(Config.CONVEYOR.EndX - Config.CONVEYOR.StartX + 4, 1, Config.CONVEYOR.Width),
 		Vector3.new(0, 0.5, Config.CONVEYOR.Z), Color3.fromRGB(60, 60, 70))
 	belt.Material = Enum.Material.SmoothPlastic
-	-- Yellow side rails.
-	makePart(parent, "RailNorth", "Part", Vector3.new(128, 0.6, 0.6),
-		Vector3.new(0, 1.3, Config.CONVEYOR.Z - Config.CONVEYOR.Width / 2 - 0.3), Color3.fromRGB(255, 210, 40))
-	makePart(parent, "RailSouth", "Part", Vector3.new(128, 0.6, 0.6),
-		Vector3.new(0, 1.3, Config.CONVEYOR.Z + Config.CONVEYOR.Width / 2 + 0.3), Color3.fromRGB(255, 210, 40))
+	-- Yellow glowing side rails, and a white glowing edge strip on the
+	-- belt top, so the dark belt cuts a bright line across the grass.
+	local railNorth = makePart(parent, "RailNorth", "Part", Vector3.new(128, 0.8, 0.8),
+		Vector3.new(0, 1.4, Config.CONVEYOR.Z - Config.CONVEYOR.Width / 2 - 0.3), Color3.fromRGB(255, 210, 40))
+	railNorth.Material = Enum.Material.Neon
+	local railSouth = makePart(parent, "RailSouth", "Part", Vector3.new(128, 0.8, 0.8),
+		Vector3.new(0, 1.4, Config.CONVEYOR.Z + Config.CONVEYOR.Width / 2 + 0.3), Color3.fromRGB(255, 210, 40))
+	railSouth.Material = Enum.Material.Neon
+	for _, z in ipairs({ Config.CONVEYOR.Z - Config.CONVEYOR.Width / 2 + 0.25, Config.CONVEYOR.Z + Config.CONVEYOR.Width / 2 - 0.25 }) do
+		local strip = makePart(parent, "BeltEdge", "Part", Vector3.new(128, 0.15, 0.5),
+			Vector3.new(0, 1.06, z), Color3.fromRGB(255, 255, 255))
+		strip.Material = Enum.Material.Neon
+	end
 	-- Chevron stripes along the belt so its direction reads at a glance.
 	for x = -55, 55, 10 do
-		makePart(parent, "Chevron", "Part", Vector3.new(2, 0.12, 6),
-			Vector3.new(x, 1.05, Config.CONVEYOR.Z), Color3.fromRGB(255, 210, 40))
+		local chevron = makePart(parent, "Chevron", "Part", Vector3.new(3, 0.15, 7),
+			Vector3.new(x, 1.06, Config.CONVEYOR.Z), Color3.fromRGB(255, 210, 40))
+		chevron.Material = Enum.Material.Neon
 	end
 	-- Spawn portal (green) where brainrots walk in, exit arch (red) where
 	-- the ones nobody bought walk out.
