@@ -6,16 +6,27 @@
 -- it reads its name, its rarity and how much money it earns every second.
 --
 -- GEOMETRY RULES (read before touching the numbers):
--- * All sizes and offsets below are PRE-SCALE, relative to `origin` — the
---   point on the belt (or the base pad) the brainrot stands on.
--- * Classic R6 layout, pre-scale: legs 1x2x1 (feet at 0, tops at 2),
---   torso 2x2x1 with its centre at +3.0 (the pivot), arms 1x2x1 at the
---   torso's sides, head a 1.2 cube centred at +4.6 (top at 5.2).
--- * The pivot is the torso centre, exactly 3.0 above the feet pre-scale,
---   so after ScaleTo(2.0) the feet end exactly 6.0 below the pivot:
---   BELT_PIVOT_Y = 7.0 puts them on the belt top (Y=1) and a slot pivot
---   of pad-top + 6.0 puts them on the pad. Never move the torso centre
---   or the feet bottom, or the model sinks into (or floats over) the belt.
+-- * All sizes and offsets below are FINAL, in studs, relative to
+--   `origin` — the point on the belt (or the base pad) the brainrot
+--   stands on. The model is built directly at 2.0x the classic R6
+--   size: legs 2x4x2 (feet at 0, tops at 4), torso 4x4x2 with its
+--   centre at +6.0 (the pivot), arms 2x4x2 at the torso's sides, head
+--   a 2.4 cube centred at +9.2 (top at 10.4).
+-- * v10: there is deliberately NO model-scaling call anywhere in this
+--   file. v9 proved from an 8x screenshot crop that the head + eyes
+--   render at the right place under the tag while the torso, arms,
+--   legs and ring of the SAME model do not — with no line of code
+--   treating the head differently from the torso. The scaling call
+--   (introduced in v4, exactly when the first pivot fix "should" have
+--   worked but bodies stayed invisible) was the last remaining
+--   suspect, so this version builds every part straight at its final
+--   size. If bodies appear now, scaling was the cause; if they still
+--   do not, scaling is cleared and the cause lives outside the code.
+-- * The pivot is the torso centre, exactly 6.0 above the feet, so
+--   BELT_PIVOT_Y = 7.0 puts the feet on the belt top (Y=1) and a slot
+--   pivot of pad-top + 6.0 puts them on the pad. Never move the torso
+--   centre or the feet bottom, or the model sinks into (or floats
+--   over) the belt.
 -- * Identity comes from the body colour + ONE oversized prop per
 --   character (cape, tie, helmet, wizard hat...), never from the body
 --   shape — every brainrot shares the same R6 skeleton, the way
@@ -27,12 +38,6 @@
 --   the dark belt (60,60,70) and the green grass.
 
 local BrainrotData = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("BrainrotData"))
-
--- Belt brainrots are built 2.0x scale so they read clearly on a phone:
--- a classic R6 avatar is 5.2 studs tall, so at 2.0x it stands about
--- 10.4 studs tall on the belt, roughly 140 px on a phone screen, with
--- a big name tag and a glowing ring at the feet.
-local MODEL_SCALE = 2.0
 
 local CharacterFactory = {}
 
@@ -73,16 +78,16 @@ local HEAD_COLORS = {
 local EXTRAS = {
 	gran = function(model, origin)
 		-- Grey hair bun on top of the head.
-		makeBall(model, "HairBun", 1.2, origin + Vector3.new(0, 5.5, 0), Color3.fromRGB(190, 190, 190))
+		makeBall(model, "HairBun", 2.4, origin + Vector3.new(0, 11, 0), Color3.fromRGB(190, 190, 190))
 	end,
 	gum = function(model, origin)
 		-- A bubblegum bubble blown at the mouth.
-		makeBall(model, "Bubble", 1.3, origin + Vector3.new(0.8, 4.5, 0.9), Color3.fromRGB(255, 150, 200), 0.25)
+		makeBall(model, "Bubble", 2.6, origin + Vector3.new(1.6, 9, 1.8), Color3.fromRGB(255, 150, 200), 0.25)
 	end,
 	moose = function(model, origin)
 		-- Two antlers on top of the head.
-		makePart(model, "AntlerLeft", Vector3.new(0.35, 1.6, 0.35), origin + Vector3.new(-0.9, 5.8, 0), Color3.fromRGB(90, 60, 30))
-		makePart(model, "AntlerRight", Vector3.new(0.35, 1.6, 0.35), origin + Vector3.new(0.9, 5.8, 0), Color3.fromRGB(90, 60, 30))
+		makePart(model, "AntlerLeft", Vector3.new(0.7, 3.2, 0.7), origin + Vector3.new(-1.8, 11.6, 0), Color3.fromRGB(90, 60, 30))
+		makePart(model, "AntlerRight", Vector3.new(0.7, 3.2, 0.7), origin + Vector3.new(1.8, 11.6, 0), Color3.fromRGB(90, 60, 30))
 	end,
 }
 
@@ -92,47 +97,47 @@ local EXTRAS = {
 -- below the belt top any more.
 local function addAccessory(model, character, origin)
 	if character.accessory == "Cape" then
-		makePart(model, "Cape", Vector3.new(2.6, 3.4, 0.3), origin + Vector3.new(0, 2.2, -0.75), Color3.fromRGB(200, 30, 30))
+		makePart(model, "Cape", Vector3.new(5.2, 6.8, 0.6), origin + Vector3.new(0, 4.4, -1.5), Color3.fromRGB(200, 30, 30))
 	elseif character.accessory == "Tie" then
-		makePart(model, "Tie", Vector3.new(0.8, 1.6, 0.25), origin + Vector3.new(0, 3, 0.6), Color3.fromRGB(30, 30, 120))
-		makePart(model, "TieKnot", Vector3.new(0.7, 0.5, 0.3), origin + Vector3.new(0, 3.9, 0.6), Color3.fromRGB(30, 30, 120))
+		makePart(model, "Tie", Vector3.new(1.6, 3.2, 0.5), origin + Vector3.new(0, 6, 1.2), Color3.fromRGB(30, 30, 120))
+		makePart(model, "TieKnot", Vector3.new(1.4, 1, 0.6), origin + Vector3.new(0, 7.8, 1.2), Color3.fromRGB(30, 30, 120))
 	elseif character.accessory == "RocketWalker" then
-		makePart(model, "WalkerLeft", Vector3.new(1, 1, 2.6), origin + Vector3.new(-1.3, 0.5, 0), Color3.fromRGB(120, 120, 130))
-		makePart(model, "WalkerRight", Vector3.new(1, 1, 2.6), origin + Vector3.new(1.3, 0.5, 0), Color3.fromRGB(120, 120, 130))
-		makePart(model, "Flame", Vector3.new(1, 1.4, 1), origin + Vector3.new(0, 0.7, -1.4), Color3.fromRGB(255, 140, 0), 0, Enum.Material.Neon)
+		makePart(model, "WalkerLeft", Vector3.new(2, 2, 5.2), origin + Vector3.new(-2.6, 1, 0), Color3.fromRGB(120, 120, 130))
+		makePart(model, "WalkerRight", Vector3.new(2, 2, 5.2), origin + Vector3.new(2.6, 1, 0), Color3.fromRGB(120, 120, 130))
+		makePart(model, "Flame", Vector3.new(2, 2.8, 2), origin + Vector3.new(0, 1.4, -2.8), Color3.fromRGB(255, 140, 0), 0, Enum.Material.Neon)
 	elseif character.accessory == "Headphones" then
-		makePart(model, "PhoneLeft", Vector3.new(0.6, 1.2, 1.2), origin + Vector3.new(-0.95, 4.6, 0), Color3.fromRGB(30, 30, 30))
-		makePart(model, "PhoneRight", Vector3.new(0.6, 1.2, 1.2), origin + Vector3.new(0.95, 4.6, 0), Color3.fromRGB(30, 30, 30))
-		makePart(model, "PhoneBand", Vector3.new(2.6, 0.4, 0.4), origin + Vector3.new(0, 5.4, 0), Color3.fromRGB(30, 30, 30))
+		makePart(model, "PhoneLeft", Vector3.new(1.2, 2.4, 2.4), origin + Vector3.new(-1.9, 9.2, 0), Color3.fromRGB(30, 30, 30))
+		makePart(model, "PhoneRight", Vector3.new(1.2, 2.4, 2.4), origin + Vector3.new(1.9, 9.2, 0), Color3.fromRGB(30, 30, 30))
+		makePart(model, "PhoneBand", Vector3.new(5.2, 0.8, 0.8), origin + Vector3.new(0, 10.8, 0), Color3.fromRGB(30, 30, 30))
 	elseif character.accessory == "Briefcase" then
-		makePart(model, "Briefcase", Vector3.new(2, 1.4, 0.5), origin + Vector3.new(2.3, 1, 0.3), Color3.fromRGB(110, 70, 30))
-		makePart(model, "CaseHandle", Vector3.new(1, 0.25, 0.25), origin + Vector3.new(2.3, 1.8, 0.3), Color3.fromRGB(200, 170, 60), 0, Enum.Material.Metal)
+		makePart(model, "Briefcase", Vector3.new(4, 2.8, 1), origin + Vector3.new(4.6, 2, 0.6), Color3.fromRGB(110, 70, 30))
+		makePart(model, "CaseHandle", Vector3.new(2, 0.5, 0.5), origin + Vector3.new(4.6, 3.6, 0.6), Color3.fromRGB(200, 170, 60), 0, Enum.Material.Metal)
 	elseif character.accessory == "Helmet" then
-		makeBall(model, "Helmet", 2.6, origin + Vector3.new(0, 4.6, 0), Color3.fromRGB(200, 230, 255), 0.4)
+		makeBall(model, "Helmet", 5.2, origin + Vector3.new(0, 9.2, 0), Color3.fromRGB(200, 230, 255), 0.4)
 	elseif character.accessory == "WizardHat" then
 		local hat = Instance.new("WedgePart")
 		hat.Name = "WizardHat"
-		hat.Size = Vector3.new(2.4, 2.2, 2.4)
-		hat.Position = origin + Vector3.new(0, 6.3, 0)
+		hat.Size = Vector3.new(4.8, 4.4, 4.8)
+		hat.Position = origin + Vector3.new(0, 12.6, 0)
 		hat.Color = Color3.fromRGB(90, 40, 140)
 		hat.Anchored = true
 		hat.CanCollide = false
 		hat.Parent = model
-		makePart(model, "HatBrim", Vector3.new(3.6, 0.3, 3.6), origin + Vector3.new(0, 5.3, 0), Color3.fromRGB(90, 40, 140))
+		makePart(model, "HatBrim", Vector3.new(7.2, 0.6, 7.2), origin + Vector3.new(0, 10.6, 0), Color3.fromRGB(90, 40, 140))
 	elseif character.accessory == "Meatball" then
-		makeBall(model, "Meatball", 1.6, origin + Vector3.new(0.9, 5.6, 0), Color3.fromRGB(140, 70, 30))
+		makeBall(model, "Meatball", 3.2, origin + Vector3.new(1.8, 11.2, 0), Color3.fromRGB(140, 70, 30))
 	elseif character.accessory == "GoldenChair" then
-		makePart(model, "ChairSeat", Vector3.new(2.6, 0.4, 2), origin + Vector3.new(0, 0.2, -1.4), Color3.fromRGB(255, 215, 0), 0, Enum.Material.Metal)
-		makePart(model, "ChairBack", Vector3.new(2.6, 2.6, 0.4), origin + Vector3.new(0, 1.5, -2.1), Color3.fromRGB(255, 215, 0), 0, Enum.Material.Metal)
+		makePart(model, "ChairSeat", Vector3.new(5.2, 0.8, 4), origin + Vector3.new(0, 0.4, -2.8), Color3.fromRGB(255, 215, 0), 0, Enum.Material.Metal)
+		makePart(model, "ChairBack", Vector3.new(5.2, 5.2, 0.8), origin + Vector3.new(0, 3, -4.2), Color3.fromRGB(255, 215, 0), 0, Enum.Material.Metal)
 	elseif character.accessory == "Hum" then
-		makePart(model, "HumGlow", Vector3.new(3, 3, 2), origin + Vector3.new(0, 3, 0), Color3.fromRGB(140, 200, 255), 0.6, Enum.Material.Neon)
+		makePart(model, "HumGlow", Vector3.new(6, 6, 4), origin + Vector3.new(0, 6, 0), Color3.fromRGB(140, 200, 255), 0.6, Enum.Material.Neon)
 	elseif character.accessory == "Glasses" then
-		makePart(model, "LensLeft", Vector3.new(0.8, 0.8, 0.2), origin + Vector3.new(-0.55, 4.7, 0.65), Color3.fromRGB(20, 20, 20))
-		makePart(model, "LensRight", Vector3.new(0.8, 0.8, 0.2), origin + Vector3.new(0.55, 4.7, 0.65), Color3.fromRGB(20, 20, 20))
-		makePart(model, "GlassesBridge", Vector3.new(0.6, 0.2, 0.2), origin + Vector3.new(0, 4.7, 0.65), Color3.fromRGB(20, 20, 20))
+		makePart(model, "LensLeft", Vector3.new(1.6, 1.6, 0.4), origin + Vector3.new(-1.1, 9.4, 1.3), Color3.fromRGB(20, 20, 20))
+		makePart(model, "LensRight", Vector3.new(1.6, 1.6, 0.4), origin + Vector3.new(1.1, 9.4, 1.3), Color3.fromRGB(20, 20, 20))
+		makePart(model, "GlassesBridge", Vector3.new(1.2, 0.4, 0.4), origin + Vector3.new(0, 9.4, 1.3), Color3.fromRGB(20, 20, 20))
 	elseif character.accessory == "MoonBoots" then
-		makePart(model, "BootLeft", Vector3.new(1.2, 1, 2), origin + Vector3.new(-0.5, 0.5, 0.2), Color3.fromRGB(200, 200, 210))
-		makePart(model, "BootRight", Vector3.new(1.2, 1, 2), origin + Vector3.new(0.5, 0.5, 0.2), Color3.fromRGB(200, 200, 210))
+		makePart(model, "BootLeft", Vector3.new(2.4, 2, 4), origin + Vector3.new(-1, 1, 0.4), Color3.fromRGB(200, 200, 210))
+		makePart(model, "BootRight", Vector3.new(2.4, 2, 4), origin + Vector3.new(1, 1, 0.4), Color3.fromRGB(200, 200, 210))
 	end
 end
 
@@ -202,7 +207,9 @@ local function addNameTag(model, character, mutation, incomePerSecond)
 end
 
 -- Build one brainrot model at a position, facing the way the conveyor runs.
--- Classic R6: legs, square torso, arms, cube head with the classic face.
+-- Classic R6, built directly at final size (2.0x): legs, square torso,
+-- arms, cube head with the classic face. No scaling call — every part is
+-- created at its final size and offset.
 function CharacterFactory.buildBrainrot(character, mutation, position)
 	local incomePerSecond = character.income * mutation.multiplier
 	local model = Instance.new("Model")
@@ -214,28 +221,28 @@ function CharacterFactory.buildBrainrot(character, mutation, position)
 	end
 	local legColor = darken(bodyColor, 0.65)
 
-	-- Legs: 1x2x1, feet at 0, tops at 2.
-	makePart(model, "LeftLeg", Vector3.new(1, 2, 1), position + Vector3.new(-0.5, 1, 0), legColor)
-	makePart(model, "RightLeg", Vector3.new(1, 2, 1), position + Vector3.new(0.5, 1, 0), legColor)
+	-- Legs: 2x4x2, feet at 0, tops at 4.
+	makePart(model, "LeftLeg", Vector3.new(2, 4, 2), position + Vector3.new(-1, 2, 0), legColor)
+	makePart(model, "RightLeg", Vector3.new(2, 4, 2), position + Vector3.new(1, 2, 0), legColor)
 
-	-- Torso: 2x2x1, centre at +3.0 — the pivot. Feet end exactly 3.0
-	-- below it pre-scale (6.0 at scale 2.0).
-	local body = makePart(model, "Body", Vector3.new(2, 2, 1), position + Vector3.new(0, 3, 0), bodyColor)
+	-- Torso: 4x4x2, centre at +6.0 — the pivot. Feet end exactly 6.0
+	-- below it.
+	local body = makePart(model, "Body", Vector3.new(4, 4, 2), position + Vector3.new(0, 6, 0), bodyColor)
 
-	-- Arms: 1x2x1 at the torso's sides.
-	makePart(model, "LeftArm", Vector3.new(1, 2, 1), position + Vector3.new(-1.5, 3, 0), bodyColor)
-	makePart(model, "RightArm", Vector3.new(1, 2, 1), position + Vector3.new(1.5, 3, 0), bodyColor)
+	-- Arms: 2x4x2 at the torso's sides.
+	makePart(model, "LeftArm", Vector3.new(2, 4, 2), position + Vector3.new(-3, 6, 0), bodyColor)
+	makePart(model, "RightArm", Vector3.new(2, 4, 2), position + Vector3.new(3, 6, 0), bodyColor)
 
-	-- Head: a 1.2 cube centred at +4.6 (top at 5.2), classic skin tone
+	-- Head: a 2.4 cube centred at +9.2 (top at 10.4), classic skin tone
 	-- unless the character overrides it.
 	local headColor = HEAD_COLORS[character.id] or Color3.fromRGB(255, 220, 180)
-	makePart(model, "Head", Vector3.new(1.2, 1.2, 1.2), position + Vector3.new(0, 4.6, 0), headColor)
+	makePart(model, "Head", Vector3.new(2.4, 2.4, 2.4), position + Vector3.new(0, 9.2, 0), headColor)
 
 	-- The classic Roblox face on the front of the head (+Z side, the
 	-- side the spawn sees): two eyes and a smile, built from parts.
-	makePart(model, "EyeLeft", Vector3.new(0.35, 0.45, 0.15), position + Vector3.new(-0.28, 4.75, 0.65), Color3.fromRGB(20, 20, 20))
-	makePart(model, "EyeRight", Vector3.new(0.35, 0.45, 0.15), position + Vector3.new(0.28, 4.75, 0.65), Color3.fromRGB(20, 20, 20))
-	makePart(model, "Smile", Vector3.new(0.7, 0.18, 0.15), position + Vector3.new(0, 4.35, 0.65), Color3.fromRGB(20, 20, 20))
+	makePart(model, "EyeLeft", Vector3.new(0.7, 0.9, 0.3), position + Vector3.new(-0.56, 9.5, 1.3), Color3.fromRGB(20, 20, 20))
+	makePart(model, "EyeRight", Vector3.new(0.7, 0.9, 0.3), position + Vector3.new(0.56, 9.5, 1.3), Color3.fromRGB(20, 20, 20))
+	makePart(model, "Smile", Vector3.new(1.4, 0.36, 0.3), position + Vector3.new(0, 8.7, 1.3), Color3.fromRGB(20, 20, 20))
 
 	local extra = EXTRAS[character.id]
 	if extra then
@@ -245,14 +252,11 @@ function CharacterFactory.buildBrainrot(character, mutation, position)
 	addNameTag(model, character, mutation, incomePerSecond)
 
 	model.PrimaryPart = body
-	-- Scale the whole model up around its pivot (the body) so it reads
-	-- clearly on a phone. All sizes and offsets above are pre-scale.
-	model:ScaleTo(MODEL_SCALE)
 
 	-- A glowing ring in the brainrot's rarity colour, flat on the ground
 	-- under its feet, so it pops against the dark belt. The ring sits
-	-- 5.85 studs below the pivot: the scaled feet end 6.0 below it, so
-	-- the ring rides just above the belt top.
+	-- 5.85 studs below the pivot: the feet end 6.0 below it, so the ring
+	-- rides just above the belt top.
 	local rarityInfo = BrainrotData.RARITIES[character.rarity]
 	local ring = Instance.new("Part")
 	ring.Name = "BaseRing"
