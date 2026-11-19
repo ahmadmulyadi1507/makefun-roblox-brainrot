@@ -35,6 +35,8 @@ local function makeCylinder(parent, name, radius, height, position, color)
 end
 
 -- A floating name board above a base: shows the base name and its owner.
+-- Kept small (150x56): BillboardGui pixels are screen-space, so the old
+-- 260x100 board read as a giant "Base 1" from across the map.
 local function makeBaseBoard(parent, baseDef)
 	local pole = makePart(parent, "BoardPole", "Part", Vector3.new(0.6, 8, 0.6),
 		baseDef.position + Vector3.new(0, 4, -Config.BASE_SIZE.Z / 2 - 1), Color3.fromRGB(90, 60, 30))
@@ -42,7 +44,7 @@ local function makeBaseBoard(parent, baseDef)
 		baseDef.position + Vector3.new(0, 9, -Config.BASE_SIZE.Z / 2 - 1), baseDef.color)
 	local gui = Instance.new("BillboardGui")
 	gui.Name = "BaseBoard"
-	gui.Size = UDim2.new(0, 260, 0, 100)
+	gui.Size = UDim2.new(0, 150, 0, 56)
 	gui.StudsOffset = Vector3.new(0, 0, 0)
 	gui.AlwaysOnTop = false
 	gui.Adornee = board
@@ -200,12 +202,27 @@ local function buildDecorations(parent)
 	end
 end
 
+-- The title sign stands on the FAR side of the conveyor (Z=-32), well
+-- clear of the sightline from the spawn pad (Z=55) to the belt (Z=0).
+-- It used to stand at Z=46, directly in that sightline: its 34-stud
+-- opaque board hid every brainrot body from the spawn camera while the
+-- AlwaysOnTop name tags still showed through, so players saw only
+-- floating text. The billboard is also far smaller now (400x100 instead
+-- of 900x240): BillboardGui pixels are screen-space, so the old one
+-- filled the whole phone screen.
 local function buildSign(parent)
-	local board = makePart(parent, "TitleBoard", "Part", Vector3.new(34, 9, 1),
-		Vector3.new(0, 9, 46), Color3.fromRGB(40, 40, 60))
+	local board = makePart(parent, "TitleBoard", "Part", Vector3.new(20, 5, 1),
+		Vector3.new(0, 13, -32), Color3.fromRGB(40, 40, 60))
+	-- Two slim posts hold the sign up; they never collide, so players
+	-- can walk straight through them.
+	for _, dx in ipairs({ -9, 9 }) do
+		local pole = makePart(parent, "SignPole", "Part", Vector3.new(0.5, 10.5, 0.5),
+			Vector3.new(dx, 5.25, -32), Color3.fromRGB(60, 60, 70))
+		pole.CanCollide = false
+	end
 	local gui = Instance.new("BillboardGui")
 	gui.Name = "TitleSign"
-	gui.Size = UDim2.new(0, 900, 0, 240)
+	gui.Size = UDim2.new(0, 400, 0, 100)
 	gui.AlwaysOnTop = false
 	gui.Adornee = board
 	gui.Parent = board

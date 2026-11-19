@@ -74,10 +74,14 @@ local function addAccessory(model, character, origin)
 end
 
 -- The floating tag: name on top, rarity and money per second below.
+-- Small on purpose (150x60): BillboardGui pixels are screen-space and
+-- do not shrink with distance, so the old 260x100 tags merged into one
+-- unreadable band — belt brainrots ride 24 studs apart, about 280 px
+-- apart on a phone screen, so 150 px leaves a clear gap between them.
 local function addNameTag(model, character, mutation, incomePerSecond)
 	local tag = Instance.new("BillboardGui")
 	tag.Name = "BrainrotTag"
-	tag.Size = UDim2.new(0, 260, 0, 100)
+	tag.Size = UDim2.new(0, 150, 0, 60)
 	tag.StudsOffset = Vector3.new(0, 7, 0)
 	tag.AlwaysOnTop = true
 	tag.Parent = model
