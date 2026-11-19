@@ -108,9 +108,9 @@ local function buildBase(parent, baseDef, index)
 				baseDef.position + Vector3.new(dx, 1.15, dz), Color3.fromRGB(240, 240, 240))
 			pad.Material = Enum.Material.Neon
 			pad.Transparency = 0.6
-			-- Slot pivot: pad top (1.3) + 3.0, because a 2.0x brainrot's
-			-- feet end exactly 3.0 below its pivot.
-			slots[slotIndex] = pad.Position + Vector3.new(0, 3.15, 0)
+			-- Slot pivot: pad top (1.3) + 6.0, because an R6 brainrot's
+			-- feet end exactly 6.0 below its pivot at scale 2.0.
+			slots[slotIndex] = pad.Position + Vector3.new(0, 6.15, 0)
 			slotIndex = slotIndex + 1
 		end
 	end
@@ -284,6 +284,14 @@ function WorldBuilder.buildWorld()
 	local world = Instance.new("Folder")
 	world.Name = "BrainrotWorld"
 	world.Parent = game:GetService("Workspace")
+
+	-- Classic Roblox look: studs on the grass baseplate's top surface.
+	-- (Also set declaratively in default.project.json; this runtime set
+	-- is the guarantee if the project file ever drops the property.)
+	local baseplate = game:GetService("Workspace"):FindFirstChild("Baseplate")
+	if baseplate and baseplate:IsA("BasePart") then
+		baseplate.TopSurface = Enum.SurfaceType.Studs
+	end
 
 	buildConveyor(world)
 	buildDecorations(world)

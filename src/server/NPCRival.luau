@@ -129,7 +129,8 @@ local function walkTo(target, carry)
 		task.wait(0.5)
 		waited = waited + 0.5
 		if carry and carry.model and carry.model.Parent then
-			carry.model:PivotTo(npcRoot.CFrame * CFrame.new(0, 5.0, 0))
+			-- Carry height 8.0 (R6 feet end 6.0 below the pivot).
+			carry.model:PivotTo(npcRoot.CFrame * CFrame.new(0, 8.0, 0))
 		end
 		-- Re-aim if the target moved (a victim's base never moves, but a
 		-- fleeing Steve should keep pushing towards his hideout).
@@ -213,8 +214,10 @@ local function think()
 			return
 		end
 		-- Carry the brainrot above his head, the way players carry theirs.
+		-- Height 8.0: R6 feet end 6.0 below the pivot, so the carried
+		-- model rides overhead (feet at root+2.0), not in the floor.
 		if carriedRef.model and carriedRef.model.Parent then
-			carriedRef.model:PivotTo(npcRoot.CFrame * CFrame.new(0, 5.0, 0))
+			carriedRef.model:PivotTo(npcRoot.CFrame * CFrame.new(0, 8.0, 0))
 		end
 		local reached = walkTo(Config.NPC.Hideout, carriedRef)
 		if reached or (npcRoot.Position - Config.NPC.Hideout).Magnitude < 8 then

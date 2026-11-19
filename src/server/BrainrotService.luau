@@ -19,13 +19,14 @@ local CharacterFactory = require(script.Parent:WaitForChild("CharacterFactory"))
 
 local BrainrotService = {}
 
--- A belt brainrot's pivot is its body centre, 1.5 studs above its feet,
--- and the model is built 2.0x scale, so the feet sit 3.0 studs below
--- the pivot. The belt top is Y=1, so the pivot rides at Y=4.0 and the
--- feet stand on the belt. The walk bob (±0.25) dips the feet a
--- quarter-stud into the belt at the bottom of each step, which reads
--- as a footstep, not a sink.
-local BELT_PIVOT_Y = 4.0
+-- A belt brainrot's pivot is its torso centre, 3.0 studs above its
+-- feet (classic R6: legs 2 + torso centre at +3.0), and the model is
+-- built 2.0x scale, so the feet sit 6.0 studs below the pivot. The
+-- belt top is Y=1, so the pivot rides at Y=7.0 and the feet stand on
+-- the belt. The walk bob (±0.25) dips the feet a quarter-stud into
+-- the belt at the bottom of each step, which reads as a footstep,
+-- not a sink.
+local BELT_PIVOT_Y = 7.0
 
 -- Live state.
 local world = nil
@@ -630,7 +631,9 @@ local function runWaveCycle()
 		for step = 0, steps do
 			local t = step / steps
 			local x = -130 + 260 * t
-			world.wavePart.CFrame = CFrame.new(x, 35, 0)
+			if world and world.wavePart then
+				world.wavePart.CFrame = CFrame.new(x, 35, 0)
+			end
 			waveSecondsLeft = math.ceil(Config.WAVE.SweepSeconds * (1 - t))
 			if step % 10 == 0 then
 				for _, player in ipairs(Players:GetPlayers()) do
@@ -652,7 +655,9 @@ local function runWaveCycle()
 			end
 			task.wait(0.1)
 		end
-		world.wavePart.CFrame = CFrame.new(-220, 35, 0)
+		if world and world.wavePart then
+			world.wavePart.CFrame = CFrame.new(-220, 35, 0)
+		end
 		wavePhase = "calm"
 		waveSecondsLeft = Config.WAVE.Interval
 		-- Sometimes the wave leaves a Golden Hour behind: double income.
@@ -814,6 +819,12 @@ function assignBase(player)
 	if not data or data.baseIndex then
 		return
 	end
+	-- The world failed to build: no bases exist, so there is nothing to
+	-- assign. Tell the player instead of indexing a nil world.
+	if not world then
+		notify(player, "World failed to load — please rejoin.", "bad")
+		return
+	end
 	for i, base in ipairs(world.bases) do
 		if not base.ownerUserId then
 			base.ownerUserId = player.UserId
@@ -902,24 +913,40 @@ function BrainrotService.start()
 	-- colours stay saturated instead of washing out. Set at runtime as
 	-- well as in the project file, so the place lights the same way no
 	-- matter which build it came from. Display only — no gameplay.
-	local Lighting = game:GetService("Lighting")
-	Lighting.Technology = Enum.Technology.Future
-	Lighting.ClockTime = 14
-	Lighting.Brightness = 2
-	Lighting.GlobalShadows = true
-	Lighting.Ambient = Color3.fromRGB(70, 70, 70)
-	if not Lighting:FindFirstChildOfClass("Atmosphere") then
-		local atmosphere = Instance.new("Atmosphere")
-		atmosphere.Density = 0.15
-		atmosphere.Offset = 0
-		atmosphere.Color = Color3.fromRGB(200, 220, 255)
-		atmosphere.Decay = Color3.fromRGB(180, 200, 230)
-		atmosphere.Glare = 0.3
-		atmosphere.Haze = 0
-		atmosphere.Parent = Lighting
+	-- Wrapped in pcall: a lighting failure must never kill the game.
+	local lightingOk, lightingErr = pcall(function()
+		local Lighting = game:GetService("Lighting")
+		Lighting.Technology = Enum.Technology.Future
+		Lighting.ClockTime = 14
+		Lighting.Brightness = 2
+		Lighting.GlobalShadows = true
+		Lighting.Ambient = Color3.fromRGB(70, 70, 70)
+		if not Lighting:FindFirstChildOfClass("Atmosphere") then
+			local atmosphere = Instance.new("Atmosphere")
+			atmosphere.Density = 0.15
+			atmosphere.Offset = 0
+			atmosphere.Color = Color3.fromRGB(200, 220, 255)
+			atmosphere.Decay = Color3.fromRGB(180, 200, 230)
+			atmosphere.Glare = 0.3
+			atmosphere.Haze = 0
+			atmosphere.Parent = Lighting
+		end
+	end)
+	if not lightingOk then
+		warn("[BrainrotService] lighting setup failed, using defaults: " .. tostring(lightingErr))
 	end
 
-	world = WorldBuilder.buildWorld()
+	-- Build the world. If it fails, warn and carry on without it: the
+	-- remotes below are still created, so players at least get the HUD
+	-- and a "world failed" notice instead of a silent empty field.
+	local worldOk, worldErr = pcall(function()
+		world = WorldBuilder.buildWorld()
+	end)
+	if not worldOk then
+		warn("[BrainrotService] buildWorld failed, continuing without world: " .. tostring(worldErr))
+		world = nil
+	end
+
 	remotes = createRemotes()
 
 	remotes.BuyBrainrot.OnServerEvent:Connect(function(player, beltId)
@@ -947,34 +974,69 @@ function BrainrotService.start()
 		setupPlayer(player)
 	end
 
-	-- The belt starts with three brainrots already on it.
+	-- The belt starts with three brainrots already on it. Each spawn is
+	-- its own pcall: one bad brainrot must not stop the other two.
 	for _ = 1, 3 do
-		spawnBeltBrainrot()
+		local ok, err = pcall(spawnBeltBrainrot)
+		if not ok then
+			warn("[BrainrotService] initial belt spawn failed: " .. tostring(err))
+		end
 	end
 	task.spawn(function()
 		while true do
 			task.wait(Config.CONVEYOR.SpawnInterval)
-			spawnBeltBrainrot()
+			local ok, err = pcall(spawnBeltBrainrot)
+			if not ok then
+				warn("[BrainrotService] belt spawn failed: " .. tostring(err))
+			end
 		end
 	end)
-	task.spawn(runIncomeLoop)
-	task.spawn(runWaveCycle)
+	-- A loop that crashes restarts after a short pause instead of dying
+	-- silently forever.
+	task.spawn(function()
+		while true do
+			local ok, err = pcall(runIncomeLoop)
+			if not ok then
+				warn("[BrainrotService] income loop stopped, restarting in 5s: " .. tostring(err))
+			end
+			task.wait(5)
+		end
+	end)
+	task.spawn(function()
+		while true do
+			local ok, err = pcall(runWaveCycle)
+			if not ok then
+				warn("[BrainrotService] wave cycle stopped, restarting in 5s: " .. tostring(err))
+			end
+			task.wait(5)
+		end
+	end)
 
 	-- Every frame: slide the belt, float carried brainrots over their
 	-- carrier's head, and hand a steal to anyone who made it home.
+	-- One bad tick warns and is skipped; the next tick still runs.
 	RunService.Heartbeat:Connect(function(dt)
-		local now = os.clock()
-		moveBelt(dt, now)
-		for _, player in ipairs(Players:GetPlayers()) do
-			local data = getData(player)
-			if data and data.carrying then
-				local character = player.Character
-				local root = character and character:FindFirstChild("HumanoidRootPart")
-				if root and data.carrying.model and data.carrying.model.Parent then
-					data.carrying.model:PivotTo(root.CFrame * CFrame.new(0, 5.0, 0))
+		local ok, err = pcall(function()
+			local now = os.clock()
+			moveBelt(dt, now)
+			for _, player in ipairs(Players:GetPlayers()) do
+				local data = getData(player)
+				if data and data.carrying then
+					local character = player.Character
+					local root = character and character:FindFirstChild("HumanoidRootPart")
+					if root and data.carrying.model and data.carrying.model.Parent then
+						-- Carry height 8.0: an R6 brainrot's feet end 6.0
+						-- below its pivot, so 8.0 keeps it overhead
+						-- (feet at root+2.0), the way it was at 5.0
+						-- when feet were only 3.0 below the pivot.
+						data.carrying.model:PivotTo(root.CFrame * CFrame.new(0, 8.0, 0))
+					end
+					tryDeliverSteal(player)
 				end
-				tryDeliverSteal(player)
 			end
+		end)
+		if not ok then
+			warn("[BrainrotService] heartbeat tick failed: " .. tostring(err))
 		end
 	end)
 end
