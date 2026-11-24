@@ -22,6 +22,17 @@
 --   suspect, so this version builds every part straight at its final
 --   size. If bodies appear now, scaling was the cause; if they still
 --   do not, scaling is cleared and the cause lives outside the code.
+-- * v10 VERDICT (AA tested 2026-11-22): bodies STILL invisible.
+--   Scaling is cleared. The live place was confirmed to be v10 and
+--   the body colours are bright (orange/yellow/green), so it is not
+--   a stale build and not camouflage either.
+-- * v11: the one structural difference left is HOW the model is built.
+--   Sneaky Steve (NPCRival) renders fine, and he is a Humanoid rig:
+--   unanchored parts welded together, with a Humanoid. Brainrots had
+--   no Humanoid and every part anchored. So v11 builds brainrots the
+--   Steve way: a Humanoid, limbs welded to the anchored torso. If
+--   bodies appear now, the rig was the cause; if not, the close-up
+--   test will show exactly what is there.
 -- * The pivot is the torso centre, exactly 6.0 above the feet, so
 --   BELT_PIVOT_Y = 7.0 puts the feet on the belt top (Y=1) and a slot
 --   pivot of pad-top + 6.0 puts them on the pad. Never move the torso
@@ -280,6 +291,27 @@ function CharacterFactory.buildBrainrot(character, mutation, position)
 	clicker.Name = "BrainrotClick"
 	clicker.MaxActivationDistance = 40
 	clicker.Parent = body
+
+	-- v11: build the brainrot like Sneaky Steve — a Humanoid rig with
+	-- welded limbs. The torso stays anchored (the assembly's root);
+	-- every other part is welded to it and unanchored, so PivotTo
+	-- still moves the whole model rigidly. No health bar overhead
+	-- (we already have our own name tag) and no joint-breaking.
+	local humanoid = Instance.new("Humanoid")
+	humanoid.BreakJointsOnDeath = false
+	humanoid.RequiresNeck = false
+	humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+	humanoid.Parent = model
+	for _, descendant in ipairs(model:GetDescendants()) do
+		if descendant:IsA("BasePart") and descendant ~= body then
+			descendant.Anchored = false
+			local weld = Instance.new("Weld")
+			weld.Part0 = body
+			weld.Part1 = descendant
+			weld.C0 = body.CFrame:Inverse() * descendant.CFrame
+			weld.Parent = body
+		end
+	end
 
 	return model
 end
